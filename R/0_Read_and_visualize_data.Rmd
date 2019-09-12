@@ -1,0 +1,111 @@
+---
+title: "Impact des conférences d'Avenir Climatique en 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# packages
+library(readr)
+library(lubridate)
+library(tidyverse)
+library(knitr)
+library(readxl)
+library(XML)
+library(rvest)
+library(RCurl)
+library(ggmap)
+
+# path
+opts_knit$set(root.dir = normalizePath('../'))
+
+opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+theme_set(theme_bw())
+
+"%ni%" <- Negate("%in%")
+```
+
+
+
+```{r read_data}
+
+data_raw <- read_xlsx("data/TBC_Tracker.xlsx", sheet = 1)
+
+```
+
+```{r}
+
+data_work <- data_raw  %>% 
+  mutate(Date = ymd(Date)) %>% 
+  mutate(Annee = year(Date)) %>% 
+  mutate(Ville = toupper(Ville)) #Mettre villes en majuscules
+
+#Liste de villes distinctes
+data_cities <- data_work %>%
+  distinct(Ville) 
+
+data_gps <- read_rds("data/gps_cities.rds") %>%
+  as_tibble() %>%
+  mutate(article = as.character(article), com_nom = as.character(com_nom)) %>%
+  rename(Ville = com_nom)
+
+#Coordonnées gps des villes où il y a eu les big conf
+cities_coordinates <- data_cities %>%
+  left_join(data_gps) %>% 
+  select(Ville, article, long, lat)
+
+```
+
+```{r}
+nb_spectateurs_annee <- data_work %>% group_by(Annee) %>% summarise(nb = sum(`Nombre de personnes`))
+```
+
+En 2019, `r nb_spectateurs_annee %>% filter(Annee == '2019') %>% pull(nb)` personnes ont assisté à des conférences d'Avenir Climatique.
+
+Voici l'évolution du nombre de personnes qui ont assisté aux TBC en fonction des années:
+
+```{r}
+nb_spectateurs_annee %>% 
+  ggplot(aes(x = Annee, y = nb)) +
+  geom_point() +
+  geom_line() +
+  theme_bw() +
+  scale_x_continuous(breaks = seq(from = min(nb_spectateurs_annee$Annee),
+                                  to = max(nb_spectateurs_annee$Annee),
+                                  by = 1))
+```
+
+
+
+```{r}
+
+data_shape <- map_data("france") %>%
+  filter(!region %in% c("Haute-Corse","Corse du Sud"))
+
+data_map <- data_work %>% left_join(cities_coordinates)
+
+data_plot_villes <- data_map %>%
+      group_by(Ville, long, lat) %>%
+      summarise(nb_spectateurs =  sum(`Nombre de personnes`)) %>%
+  ungroup()
+plot_sampling <- ggplot() +
+  geom_path(
+    aes(long, lat, group=group),
+    data=data_shape, color="lightgray"
+  ) +
+  geom_point(
+    aes(long, lat, size = nb_spectateurs),
+    data=data_plot_villes
+  ) +
+  guides(size = guide_legend(title="Nombre de\nspectateurs")) +
+  theme(legend.text=element_text(size=8), legend.title = element_text(size = 8)) +
+  coord_quickmap() +
+  labs(y="Lattitude (°)", x="Longitude (°)") + 
+  ggtitle("Répartition des spectateurs \ntouchés aux différentes TBC") + 
+  theme_minimal() + 
+  scale_x_continuous(breaks = NULL) + 
+  scale_y_continuous(breaks = NULL) +
+  labs(x = "", y = "")
+
+plot_sampling
+```
+
