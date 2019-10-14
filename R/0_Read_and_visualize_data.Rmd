@@ -1,5 +1,5 @@
 ---
-title: "Impact des conférences d'Avenir Climatique en 2019"
+title: "Impact des conférences d'Avenir Climatique"
 output:
   pdf_document: default
   html_document: default
@@ -28,11 +28,23 @@ theme_set(theme_bw())
 
 
 
-```{r read_data}
+```{r scrap_data}
 
-data_raw <- read_xlsx("data/TBC_Tracker.xlsx", sheet = 1)
+# Follow this procedure to scrap data: https://support.geckoboard.com/hc/en-us/articles/360015442912-How-to-create-a-direct-link-to-your-Google-Sheets-spreadsheet
+
+url_tbc_tracker <- "https://docs.google.com/spreadsheets/d/1rjMthAylnW4tFlA0Cj-tXt6MSRN8x14zYkx9M0-vA9w/export?format=xlsx" 
+download.file(url_tbc_tracker, destfile = "data/TBC_Tracker_scrapped.xlsx")
+
 
 ```
+
+
+```{r read_data}
+
+data_raw <- read_xlsx("data/TBC_Tracker_scrapped.xlsx", sheet = 1)
+
+```
+
 
 ```{r}
 
@@ -76,6 +88,7 @@ nb_spectateurs_annee %>%
                                   by = 1))
 ```
 
+Voici une carte de France des spectateurs de la TBC.
 
 
 ```{r}
@@ -109,5 +122,38 @@ plot_sampling <- ggplot() +
   labs(x = "", y = "")
 
 plot_sampling
+```
+
+
+```{r}
+
+data_work %>%
+  ggplot(aes(x = Ville, y = `Nombre de personnes`)) +
+  geom_col(aes(col = `Type de public`, fill = `Type de public`)) + 
+  theme(axis.text.x = element_text(angle = 60, size = 6, hjust = 0.5, vjust = 0.5)) + 
+  ggtitle("Nombre de personnes touchées dans chaque ville")
+
+```
+
+Nombre de spectateurs touchés par type de lieu.
+
+```{r}
+
+data_work %>%
+  group_by(`Type de lieu`) %>% 
+  summarise(`Nombre de spectateurs` = sum(`Nombre de personnes`)) %>% 
+  ungroup %>% 
+  ggplot( aes(x=fct_reorder(`Type de lieu`, `Nombre de spectateurs`),
+              #Ordonner le facteur Type de lieu par nombre de spectateurs
+              #pour améliorer l'ordre d'apparition dans le graphique
+              y=`Nombre de spectateurs`)) + 
+  geom_point(size=3) + 
+  geom_segment(aes(x=fct_reorder(`Type de lieu`, `Nombre de spectateurs`), 
+                   xend=`Type de lieu`, 
+                   y=0, 
+                   yend=`Nombre de spectateurs`)) + 
+  labs(title="Nombre de spectateurs par type de lieu", x = "Type de lieu") + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6))
+
 ```
 
