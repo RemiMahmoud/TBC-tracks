@@ -16,7 +16,7 @@ library(XML)
 library(rvest)
 library(RCurl)
 library(ggmap)
-
+library(stringi)
 # path
 opts_knit$set(root.dir = normalizePath('../'))
 
@@ -51,11 +51,20 @@ data_raw <- read_xlsx("data/TBC_Tracker_scrapped.xlsx", sheet = 1)
 data_work <- data_raw  %>% 
   mutate(Date = ymd(Date)) %>% 
   mutate(Annee = year(Date)) %>% 
-  mutate(Ville = toupper(Ville)) #Mettre villes en majuscules
+  mutate(Ville = toupper(Ville)) %>%  #Mettre villes en majuscules
+  mutate(Ville = stringi::stri_trans_general(Ville, "Latin-ASCII")) %>% #Supprimer accents
+  mutate(Ville = str_replace_all(Ville, " ", "-")) %>% #remplacer les espaces par des tirets
+  mutate(Ville = str_replace(Ville, "ST-", "SAINT-")) %>% 
+  rename(dep = `Département (Numéro)`) %>% 
+  mutate(`Type de lieu` = str_to_title(`Type de lieu`)) #Premiere lettre en majuscule
 
 #Liste de villes distinctes
 data_cities <- data_work %>%
-  distinct(Ville) 
+  distinct(Ville, dep) %>% 
+  mutate(Ville = stringi::stri_trans_general(Ville, "Latin-ASCII")) %>% #Supprimer accents
+  mutate(Ville = str_replace_all(Ville, " ", "-")) %>% #remplacer les espaces par des tirets
+  mutate(Ville = str_replace(Ville, "ST-", "SAINT-"))
+  
 
 data_gps <- read_rds("data/gps_cities.rds") %>%
   as_tibble() %>%
@@ -67,6 +76,14 @@ cities_coordinates <- data_cities %>%
   left_join(data_gps) %>% 
   select(Ville, article, long, lat)
 
+# SAINT QUENTIN non present en BDD
+cities_coordinates[which(cities_coordinates$Ville == "SAINT-QUENTIN-EN-YVELINES" ), c("long", "lat")] <- c(2.029,48.773)
+
+
+cities_na <- cities_coordinates %>% 
+  filter(is.na(long)) %>% pull(Ville) 
+
+# print(cities_na)
 ```
 
 ```{r}
@@ -83,15 +100,16 @@ nb_spectateurs_annee %>%
   geom_point() +
   geom_line() +
   theme_bw() +
-  scale_x_continuous(breaks = seq(from = min(nb_spectateurs_annee$Annee),
-                                  to = max(nb_spectateurs_annee$Annee),
+  scale_x_continuous(breaks = seq(from = min(nb_spectateurs_annee$Annee, na.rm = TRUE),
+                                  to = max(nb_spectateurs_annee$Annee, na.rm = TRUE),
                                   by = 1))
 ```
 
 Voici une carte de France des spectateurs de la TBC.
 
+![](figures/map_conferences.jpg)
 
-```{r}
+```{r, fig.height=21, fig.width=21}
 
 data_shape <- map_data("france") %>%
   filter(!region %in% c("Haute-Corse","Corse du Sud"))
@@ -112,18 +130,26 @@ plot_sampling <- ggplot() +
     data=data_plot_villes
   ) +
   guides(size = guide_legend(title="Nombre de\nspectateurs")) +
-  theme(legend.text=element_text(size=8), legend.title = element_text(size = 8)) +
+  theme(legend.text=element_text(size=16),
+        legend.title = element_text(size = 16),
+        title = element_text(size = 16)) +
   coord_quickmap() +
   labs(y="Lattitude (°)", x="Longitude (°)") + 
-  ggtitle("Répartition des spectateurs \ntouchés aux différentes TBC") + 
+  ggtitle("Répartition des spectateurs touchés aux différentes TBC") + 
   theme_minimal() + 
   scale_x_continuous(breaks = NULL) + 
   scale_y_continuous(breaks = NULL) +
   labs(x = "", y = "")
 
-plot_sampling
+# plot_sampling
+
+plot_sampling %>% ggsave(plot = ., filename = "map_conferences.jpg", path = "R/figures" , units = "cm", width = 29, height = 29, dpi = "retina")
 ```
 
+Des conférences ont eu lieu dans des villes dont nous n'avons pas les coordonnées et que nous ne pouvons donc pas représenter:
+
+
+`r kable(cities_na, col.names = NULL)`
 
 ```{r}
 
