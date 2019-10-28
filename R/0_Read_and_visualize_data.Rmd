@@ -153,12 +153,14 @@ Des conférences ont eu lieu dans des villes dont nous n'avons pas les coordonn�
 
 ```{r}
 
-data_work %>%
+nb_spectateurs_par_villes <- data_work %>%
   ggplot(aes(x = Ville, y = `Nombre de personnes`)) +
   geom_col(aes(col = `Type de public`, fill = `Type de public`)) + 
   theme(axis.text.x = element_text(angle = 60, size = 6, hjust = 0.5, vjust = 0.5)) + 
-  ggtitle("Nombre de personnes touchées dans chaque ville")
+  ggtitle("Nombre de personnes touchées par ville")
 
+nb_spectateurs_par_villes
+nb_spectateurs_par_villes %>% ggsave(plot = ., filename = "hist_spectateurs.jpg", path = "R/figures" , units = "cm", width = 29, height = 29, dpi = "retina")
 ```
 
 Nombre de spectateurs touchés par type de lieu.
