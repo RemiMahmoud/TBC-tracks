@@ -26,6 +26,11 @@ theme_set(theme_bw())
 "%ni%" <- Negate("%in%")
 ```
 
+```{r}
+
+ceil_10 <- function(x){return(10*ceiling(x/10))}
+
+```
 
 
 ```{r scrap_data}
@@ -137,6 +142,7 @@ plot_sampling <- ggplot() +
   labs(y="Lattitude (°)", x="Longitude (°)") + 
   ggtitle("Répartition des spectateurs touchés aux différentes TBC") + 
   theme_minimal() + 
+  scale_size_continuous(breaks = seq(min(data_plot_villes$nb_spectateurs) %>% ceil_10, max(data_plot_villes$nb_spectateurs), length.out = 5 ) %>% round()) + 
   scale_x_continuous(breaks = NULL) + 
   scale_y_continuous(breaks = NULL) +
   labs(x = "", y = "")
