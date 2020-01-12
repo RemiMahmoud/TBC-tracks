@@ -12,9 +12,9 @@ library(lubridate)
 library(tidyverse)
 library(knitr)
 library(readxl)
-library(XML)
 library(rvest)
 library(RCurl)
+library(gsheet)
 library(ggmap)
 library(stringi)
 # path
@@ -32,29 +32,35 @@ ceil_10 <- function(x){return(10*ceiling(x/10))}
 
 ```
 
+```{r}
+install.packages('gsheet')
+
+
+```
 
 ```{r scrap_data}
 
 # Follow this procedure to scrap data: https://support.geckoboard.com/hc/en-us/articles/360015442912-How-to-create-a-direct-link-to-your-Google-Sheets-spreadsheet
 
-url_tbc_tracker <- "https://docs.google.com/spreadsheets/d/1rjMthAylnW4tFlA0Cj-tXt6MSRN8x14zYkx9M0-vA9w/export?format=xlsx" 
-download.file(url_tbc_tracker, destfile = "data/TBC_Tracker_scrapped.xlsx")
+# url_tbc_tracker <- "https://docs.google.com/spreadsheets/d/1rjMthAylnW4tFlA0Cj-tXt6MSRN8x14zYkx9M0-vA9w/export?format=xlsx" 
+# download.file(url_tbc_tracker, destfile = "data/TBC_Tracker_scrapped.xlsx")
 
 
 ```
 
 
 ```{r read_data}
+#Old way to dl
+# data_raw <- readxl::read_xlsx("data/TBC_Tracker_scrapped.xlsx", sheet = 1)
 
-data_raw <- read_xlsx("data/TBC_Tracker_scrapped.xlsx", sheet = 1)
-
+data_raw <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1rjMthAylnW4tFlA0Cj-tXt6MSRN8x14zYkx9M0-vA9w/edit#gid=0', sheetid = 1)
 ```
 
 
 ```{r}
 
 data_work <- data_raw  %>% 
-  mutate(Date = ymd(Date)) %>% 
+  mutate(Date = dmy(Date)) %>% 
   mutate(Annee = year(Date)) %>% 
   mutate(Ville = toupper(Ville)) %>%  #Mettre villes en majuscules
   mutate(Ville = stringi::stri_trans_general(Ville, "Latin-ASCII")) %>% #Supprimer accents
@@ -142,7 +148,7 @@ plot_sampling <- ggplot() +
   labs(y="Lattitude (°)", x="Longitude (°)") + 
   ggtitle("Répartition des spectateurs touchés aux différentes TBC") + 
   theme_minimal() + 
-  scale_size_continuous(breaks = seq(min(data_plot_villes$nb_spectateurs) %>% ceil_10, max(data_plot_villes$nb_spectateurs), length.out = 5 ) %>% round()) + 
+  scale_size_continuous(breaks = ceil_10(seq(min(data_plot_villes$nb_spectateurs) %>% ceil_10, max(data_plot_villes$nb_spectateurs), length.out = 5 ) ) ) + 
   scale_x_continuous(breaks = NULL) + 
   scale_y_continuous(breaks = NULL) +
   labs(x = "", y = "")
