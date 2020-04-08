@@ -33,7 +33,7 @@ ceil_10 <- function(x){return(10*ceiling(x/10))}
 ```
 
 ```{r}
-install.packages('gsheet')
+# install.packages('gsheet')
 
 
 ```
@@ -67,6 +67,8 @@ data_work <- data_raw  %>%
   mutate(Ville = str_replace_all(Ville, " ", "-")) %>% #remplacer les espaces par des tirets
   mutate(Ville = str_replace(Ville, "ST-", "SAINT-")) %>% 
   rename(dep = `Département (Numéro)`) %>% 
+  rename(Academy = `Numéro ACademy (à laquelle a participé le conférencier)`) %>%
+  # mutate(Academy = factor(Academy)) %>% 
   mutate(`Type de lieu` = str_to_title(`Type de lieu`)) #Premiere lettre en majuscule
 
 #Liste de villes distinctes
@@ -148,7 +150,7 @@ plot_sampling <- ggplot() +
   labs(y="Lattitude (°)", x="Longitude (°)") + 
   ggtitle("Répartition des spectateurs touchés aux différentes TBC") + 
   theme_minimal() + 
-  scale_size_continuous(breaks = ceil_10(seq(min(data_plot_villes$nb_spectateurs) %>% ceil_10, max(data_plot_villes$nb_spectateurs), length.out = 5 ) ) ) + 
+  scale_size_continuous(breaks = ceil_10(seq(min(data_plot_villes$nb_spectateurs, na.rm = T) %>% ceil_10, max(data_plot_villes$nb_spectateurs, na.rm = T), length.out = 5 ) ) ) + 
   scale_x_continuous(breaks = NULL) + 
   scale_y_continuous(breaks = NULL) +
   labs(x = "", y = "")
@@ -165,14 +167,15 @@ Des conférences ont eu lieu dans des villes dont nous n'avons pas les coordonn�
 
 ```{r}
 
-nb_spectateurs_par_villes <- data_work %>%
-  ggplot(aes(x = Ville, y = `Nombre de personnes`)) +
+nb_spectateurs_par_dep <- data_work %>%
+  ggplot(aes(x = factor(dep), y = `Nombre de personnes`)) +
   geom_col(aes(col = `Type de public`, fill = `Type de public`)) + 
   theme(axis.text.x = element_text(angle = 60, size = 6, hjust = 0.5, vjust = 0.5)) + 
-  ggtitle("Nombre de personnes touchées par ville")
+  ggtitle("Nombre de personnes touchées par département") +
+  labs(x = "Département")
 
-nb_spectateurs_par_villes
-nb_spectateurs_par_villes %>% ggsave(plot = ., filename = "hist_spectateurs.jpg", path = "R/figures" , units = "cm", width = 29, height = 29, dpi = "retina")
+nb_spectateurs_par_dep
+nb_spectateurs_par_dep %>% ggsave(plot = ., filename = "hist_spectateurs.jpg", path = "R/figures" , units = "cm", width = 29, height = 29, dpi = "retina")
 ```
 
 Nombre de spectateurs touchés par type de lieu.
@@ -196,4 +199,45 @@ data_work %>%
   theme(axis.text.x = element_text(angle=65, vjust=0.6))
 
 ```
+
+
+# Academy 4
+```{r}
+
+
+data_map <- data_work %>%
+  left_join(cities_coordinates) 
+# %>% 
+#   filter(`Numéro ACademy (à laquelle a participé le conférencier)` == 4) 
+
+data_plot_villes <- data_map %>%
+      group_by(Ville,Academy, long, lat) %>%
+      summarise(nb_spectateurs =  sum(`Nombre de personnes`)) %>%
+  ungroup()
+plot_sampling <- ggplot() +
+  geom_path(
+    aes(long, lat, group=group),
+    data=data_shape, color="lightgray"
+  ) +
+  geom_point(
+    aes(long, lat, size = nb_spectateurs, color =factor(Academy)),
+    data=data_plot_villes
+  ) +
+  guides(size = guide_legend(title="Nombre de\nspectateurs")) +
+  theme(legend.text=element_text(size=16),
+        legend.title = element_text(size = 16),
+        title = element_text(size = 16)) +
+  coord_quickmap() +
+  labs(y="Lattitude (°)", x="Longitude (°)") + 
+  ggtitle("Répartition des spectateurs touchés aux différentes TBC") + 
+  theme_minimal() + 
+  scale_size_continuous(breaks = ceil_10(seq(min(data_plot_villes$nb_spectateurs, na.rm = T) %>% ceil_10, max(data_plot_villes$nb_spectateurs, na.rm = T), length.out = 5 ) ) ) + 
+  scale_x_continuous(breaks = NULL) + 
+  scale_y_continuous(breaks = NULL) +
+  labs(x = "", y = "")
+
+
+```
+
+
 
