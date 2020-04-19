@@ -240,4 +240,25 @@ plot_sampling <- ggplot() +
 ```
 
 
+```{r}
+library(forcats)
+
+```
+
+
+```{r}
+
+
+fun_unify <- function(string) {
+  out <- str_to_title(string)
+  return(out)
+}
+
+```
+
+
+```{r}
+data_work %>% View
+```
+
 

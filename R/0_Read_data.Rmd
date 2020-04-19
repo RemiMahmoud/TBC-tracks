@@ -1,0 +1,64 @@
+---
+title: "Impact des conférences d'Avenir Climatique"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+# packages
+library(readr)
+library(lubridate)
+library(tidyverse)
+library(knitr)
+library(gsheet)
+library(stringi)
+# path
+opts_knit$set(root.dir = normalizePath('../'))
+
+opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+theme_set(theme_bw())
+
+"%ni%" <- Negate("%in%")
+```
+
+
+```{r read_data}
+#Old way to dl
+# data_raw <- readxl::read_xlsx("data/TBC_Tracker_scrapped.xlsx", sheet = 1)
+
+data_raw <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1rjMthAylnW4tFlA0Cj-tXt6MSRN8x14zYkx9M0-vA9w/edit#gid=0', sheetid = 1)
+```
+
+
+```{r}
+
+data_work <- data_raw  %>% 
+  mutate(Date = dmy(Date)) %>% 
+  mutate(Annee = year(Date),
+         Annee = factor(Annee)) %>% 
+  mutate(Ville = toupper(Ville)) %>%  #Mettre villes en majuscules
+  mutate(Ville = stringi::stri_trans_general(Ville, "Latin-ASCII")) %>% #Supprimer accents
+  mutate(Ville = str_replace_all(Ville, " ", "-")) %>% #remplacer les espaces par des tirets
+  mutate(Ville = str_replace(Ville, "ST-", "SAINT-")) %>% 
+  rename(dep = `Département (Numéro)`) %>% 
+  rename(Academy = `Numéro ACademy (à laquelle a participé le conférencier)`) %>%
+  # mutate(Academy = factor(Academy)) %>% 
+  mutate(`Type de lieu` = str_to_title(`Type de lieu`)) #Premiere lettre en majuscule
+
+
+# print(cities_na)
+```
+
+```{r}
+#Deal with NAs
+data_work <- data_work %>%
+  mutate(`Type de public` = replace_na(`Type de public`, "Non renseigné"),
+         `Nom du lieu` = replace_na(`Nom du lieu`, "Non renseigné"))
+
+```
+
+
+```{r}
+data_work %>% write_rds("data/data_work.rds")
+```
