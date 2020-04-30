@@ -89,6 +89,22 @@ nb_spectateurs_par_dep
 nb_spectateurs_par_dep %>% ggsave(plot = ., filename = "hist_spectateurs.jpg", path = "R/figures" , units = "cm", width = 29, height = 29, dpi = "retina")
 ```
 
+
+
+```{r, eval = FALSE}
+
+nb_spectateurs_par_conferencier  <- data_work %>%
+  mutate(Noms = fct_reorder(factor(Noms),`Nombre de personnes`, sum, .desc = TRUE, na.rm = FALSE)) %>% 
+  ggplot(aes(x = Noms, y = `Nombre de personnes`)) +
+  # geom_col(aes(col = `Type de public`, fill = `Type de public`)) +
+  geom_col(aes(col = Annee, fill = Annee)) +
+  theme(axis.text.x = element_text(angle = 60, size = 6, hjust = 0.5, vjust = 0.5)) + 
+  ggtitle("Nombre de personnes touchées par conférencie.r.e(s)") +
+  labs(x = "Département")+
+  guides(color = guide_legend(title = "Annee"))
+
+```
+
 Les conférences ont principalement sensibilisé des parisiens, même si d'autres départements ont aussi eu pas mal de spectateurs (Finistère, Rhône etc.).
 
 
@@ -114,7 +130,7 @@ cities_coordinates <- data_cities %>%
   select(Ville, article, long, lat)
 
 # SAINT QUENTIN non present en BDD
-cities_coordinates[which(cities_coordinates$Ville == "SAINT-QUENTIN-EN-YVELINES" ), c("long", "lat")] <- c(2.029,48.773)
+cities_coordinates[which(cities_coordinates$Ville == "SAINT-QUENTIN-EN-YVELINES" ), c("long", "lat")] =list(long = 2.029, lat = 48.773)
 
 
 cities_na <- cities_coordinates %>% 
@@ -164,7 +180,7 @@ plot_sampling <- ggplot() +
 
 plot_sampling %>% ggsave(plot = ., filename = "map_conferences.jpg", path = "R/figures" , units = "cm", width = 29, height = 29, dpi = "retina")
 ```
-On retrouve le grand nombre de personnes sensibilisées à Paris, ainsi que le Finistrès. Certains départements de France pourraient être un peu plus sensibilisées également.
+On retrouve le grand nombre de personnes sensibilisées à Paris, ainsi que le Finistère. Certains départements de France pourraient être un peu plus sensibilisées également. Les départements de la fameuse "diagonale du vide" sont assez bien lotis en conférence. A l'inverse, certains départements ayant une forte densité n'ont pas eu de conférence d'Avenir Climatique, comme par exemple le Nord-Pas-de-Calais ou la Loire-Atlantique.
 
 
 Des conférences ont eu lieu dans des villes dont nous n'avons pas les coordonnées et que nous ne pouvons donc pas représenter:
@@ -197,6 +213,41 @@ nb_spectateurs_par_public %>% ggsave(plot = ., filename = "hist_type_de_public.j
 
 Les conférences sont principalement faites à des étudiant.e.s ou au grand public.
 
+
+
+```{r}
+
+# Rassembler des types de lieux qui se ressemblent (ex: Bar asso = Bar, Asso = Association)
+data_work_lieu <- data_work %>%
+  rowwise %>% 
+  mutate(`Type de lieu` = case_when(str_detect(`Type de lieu`, "Bar") ~ "Bar",
+                                    str_detect(`Type de lieu`, "Asso") ~ "Association",
+                                    str_detect(`Type de lieu`, "ingé|Université") ~ "Université ou grande école",
+                                    str_detect(`Type de lieu`, 'Google Meets|Twitch') ~ "Visio",
+                                    str_detect(`Type de lieu`, 'Entreprise') ~ "Entreprise",
+                                    str_detect(`Type de lieu`, 'Lycée') ~ "Lycée",
+                                    str_detect(`Type de lieu`, 'Travail') ~ "Travail",
+                                    str_detect(`Type de lieu`, 'Salle') ~ "Salle municipale",
+                                    TRUE ~ `Type de lieu`)) %>% 
+  ungroup
+
+nb_spectateurs_par_lieu  <- data_work_lieu %>%
+  mutate(`Type de lieu` = fct_reorder(`Type de lieu`,`Nombre de personnes`, sum, .desc = TRUE, na.rm = FALSE)) %>% 
+  ggplot(aes(x = `Type de lieu`, y = `Nombre de personnes`)) +
+  # geom_col(aes(col = `Type de public`, fill = `Type de public`)) +
+  geom_col(aes(col = Annee, fill = Annee)) +
+  theme(axis.text.x = element_text(angle = 60, size = 6, hjust = 0.5, vjust = 0.5)) + 
+  ggtitle("Nombre de personnes touchées par type de lieu") +
+  labs(x = "Type de lieu")+
+  guides(color = guide_legend(title = "Annee"))
+
+
+
+nb_spectateurs_par_lieu
+nb_spectateurs_par_lieu %>% ggsave(plot = ., filename = "hist_type_de_lieu.jpg", path = "R/figures" , units = "cm", width = 29, height = 29, dpi = "retina")
+```
+
+Enfin, quand on observe la répartition du nombre de personnes touchées par type de lieu, on retrouve le fort nombre d'étudiant.e.s sensibilisé.e.s dans les universités ou grandes écoles. On note également le fort nombre de personnes sensibilisées par visio, avec comme unique année 2020, année de la pandémie de Covid19.
 
 ## Nombre de personnes par conférence
 
@@ -234,6 +285,27 @@ data_work %>%
 ```
 
 On not une légère augmentation du nombre médian de personnes par conférence au cours des années.
+
+
+<!-- ## Analyse de données -->
+
+```{r, eval = FALSE}
+library(FactoMineR)
+```
+
+```{r, eval = FALSE}
+
+CA(table(data_work$dep, data_work$`Type de public`))
+
+
+res.mca <- MCA(data_work %>% mutate(dep = as.factor(dep), Academy = as.factor(Academy)) %>% select(`Type de public`, dep,  Academy))
+
+plot.MCA(res.mca, choix = "ind")
+
+plot.MCA(res.mca, choix = "var")
+
+```
+
 
 
 

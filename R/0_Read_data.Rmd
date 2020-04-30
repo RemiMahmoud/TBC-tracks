@@ -54,7 +54,8 @@ data_work <- data_raw  %>%
 #Deal with NAs
 data_work <- data_work %>%
   mutate(`Type de public` = replace_na(`Type de public`, "Non renseigné"),
-         `Nom du lieu` = replace_na(`Nom du lieu`, "Non renseigné"))
+         `Nom du lieu` = replace_na(`Nom du lieu`, "Non renseigné"),
+         `Type de lieu` = replace_na(`Type de lieu`, "Non renseigné"))
 
 ```
 
