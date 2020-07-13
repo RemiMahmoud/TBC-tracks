@@ -1,8 +1,8 @@
 ---
 title: "Impact des conférences d'Avenir Climatique"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -27,6 +27,10 @@ theme_set(theme_bw())
 data_work <- read_rds("data/data_work.rds")
 ```
 
+```{r}
+
+data_work_RA <- data_work %>% filter(between(Date, ymd("2019-08-01"), ymd("2020-06-30")))
+```
 
 ```{r}
 
@@ -37,16 +41,43 @@ ceil_10 <- function(x){return(10*ceiling(x/10))}
 
 ## Nombre de personnes sensibilisées
 
+### Saison 2019-2020
 
 ```{r}
-nb_spectateurs_annee <- data_work %>% group_by(Annee) %>% summarise(nb = sum(`Nombre de personnes`))
+nb_spectateurs_annee <- data_work %>% group_by(Annee) %>%   summarise(nb = sum(`Nombre de personnes`))
+nb_spectateurs <- data_work_RA %>%  summarise(nb = sum(`Nombre de personnes`))
+
+nb_confs <- data_work_RA %>% nrow
 ```
 
 
-Voici l'évolution du nombre de personnes qui ont assisté aux TBC en fonction des années:
+Du 1er août 2019 au 30 juin 2020,`r nb_confs` conférences ont été réalisées, pour un total de  `r nb_spectateurs` spectateurs sensibilisé.e.s.
 
 ```{r}
-nb_spectateurs_annee %>% 
+nb_spectateurs_par_conf <- data_work_RA %>%
+  ggplot(aes(x = 0, y = `Nombre de personnes`))+
+  geom_boxplot(aes(x = 0), outlier.shape = NA)+
+  geom_jitter(alpha = 0.4, width = 0.04, aes(color = factor(Annee)))+
+  scale_y_continuous(breaks = ceil_10(seq(0, ceil_10(max(data_work$`Nombre de personnes`)), length.out = 16) )) +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())+
+  guides(color = guide_legend(title = "Annee"))+
+  ggtitle("Nombre de spectateurs par conférence (2019-2020)")
+
+
+nb_spectateurs_par_conf
+
+nb_spectateurs_par_conf %>% ggsave(plot = ., filename = "nb_spectateurs_par_conf.jpg", path = "Rapports/figures" , units = "cm", width = 29, height = 29, dpi = "retina")
+
+```
+
+
+### Depuis le début de l'Academy
+
+On peut regarder l'évolution du nombre de spectateurs par an.
+
+```{r}
+evolution_nb_spectateurs <- nb_spectateurs_annee %>% 
   mutate(Annee = as.numeric(as.character(Annee))) %>% 
   ggplot(aes(x = Annee, y = nb)) +
   geom_point() +
@@ -57,23 +88,22 @@ nb_spectateurs_annee %>%
   ggtitle("Nombre de personnes sensibilisées par an")
 
 
+evolution_nb_spectateurs
+evolution_nb_spectateurs %>% ggsave(plot = ., filename = "evolution_nb_spectateurs.jpg", path = "Rapports/figures" , units = "cm", width = 29, height = 29, dpi = "retina")
 
 ```
 
-On note une forte augmentation du nombre de personnes sensibilisées. La chute observée en 2020 s'explique par:
-
-1. L'année n'est pas terminée à l'heure où j'écris ces lignes
-2. La crise du Covid-19 met à mal certaines tenues de conférences
+On note une forte augmentation du nombre de personnes sensibilisées. La chute observée en 2020 s'explique par la crise du Covid-19 qui a mis à mal certaines tenues de conférences.
 
 
 En 2019, `r nb_spectateurs_annee %>% filter(Annee == '2019') %>% pull(nb)` personnes ont assisté à des conférences d'Avenir Climatique.
 
 
-Regardons le nombre de personnes sensibilisées par département:
+Regardons le nombre de personnes sensibilisées par département (saison 2019-2020):
 
 ```{r}
 
-nb_spectateurs_par_dep  <- data_work %>%
+nb_spectateurs_par_dep  <- data_work_RA %>%
   mutate(dep = fct_reorder(factor(dep),`Nombre de personnes`, sum, .desc = TRUE, na.rm = FALSE)) %>% 
   ggplot(aes(x = factor(dep), y = `Nombre de personnes`)) +
   # geom_col(aes(col = `Type de public`, fill = `Type de public`)) +
@@ -86,14 +116,14 @@ nb_spectateurs_par_dep  <- data_work %>%
 
 
 nb_spectateurs_par_dep
-nb_spectateurs_par_dep %>% ggsave(plot = ., filename = "hist_spectateurs.jpg", path = "R/figures" , units = "cm", width = 29, height = 29, dpi = "retina")
+nb_spectateurs_par_dep %>% ggsave(plot = ., filename = "hist_spectateurs.jpg", path = "Rapports/figures" , units = "cm", width = 29, height = 29, dpi = "retina")
 ```
 
 
 
 ```{r, eval = FALSE}
 
-nb_spectateurs_par_conferencier  <- data_work %>%
+nb_spectateurs_par_conferencier  <- data_work_RA %>%
   mutate(Noms = fct_reorder(factor(Noms),`Nombre de personnes`, sum, .desc = TRUE, na.rm = FALSE)) %>% 
   ggplot(aes(x = Noms, y = `Nombre de personnes`)) +
   # geom_col(aes(col = `Type de public`, fill = `Type de public`)) +
@@ -113,7 +143,7 @@ Les conférences ont principalement sensibilisé des parisiens, même si d'autre
 
 
 #Liste de villes distinctes
-data_cities <- data_work %>%
+data_cities <- data_work_RA %>%
   distinct(Ville, dep) %>% 
   mutate(Ville = stringi::stri_trans_general(Ville, "Latin-ASCII")) %>% #Supprimer accents
   mutate(Ville = str_replace_all(Ville, " ", "-")) %>% #remplacer les espaces par des tirets
@@ -148,7 +178,7 @@ Voici une carte de France des spectateurs de la TBC.
 data_shape <- map_data("france") %>%
   filter(!region %in% c("Haute-Corse","Corse du Sud"))
 
-data_map <- data_work %>% left_join(cities_coordinates)
+data_map <- data_work_RA %>% left_join(cities_coordinates)
 
 data_plot_villes <- data_map %>%
       group_by(Ville, long, lat) %>%
@@ -178,7 +208,7 @@ plot_sampling <- ggplot() +
 
 # plot_sampling
 
-plot_sampling %>% ggsave(plot = ., filename = "map_conferences.jpg", path = "R/figures" , units = "cm", width = 29, height = 29, dpi = "retina")
+plot_sampling %>% ggsave(plot = ., filename = "map_conferences.jpg", path = "Rapports/figures" , units = "cm", width = 29, height = 29, dpi = "retina")
 ```
 
 On retrouve un grand nombre de personnes sensibilisées à Paris, ainsi que dans le Finistère. Certains départements de France pourraient être un peu plus sensibilisées : en effet, plusieurs départements à forte densité n'ont pour autant pas eu de conférence d’Avenir Climatique, comme le Nord-Pas-de-Calais, la Loire-Atlantique, ou la Seine-et-Marne. A l'inverse, les départements de la fameuse “diagonale du vide” sont assez bien lotis en conférences : Landes, Dordogne, Cantal, Puy de Dôme...
@@ -194,7 +224,7 @@ Des conférences ont eu lieu dans des villes dont nous n'avons pas les coordonn�
 
 ```{r}
 
-nb_spectateurs_par_public  <- data_work %>%
+nb_spectateurs_par_public  <- data_work_RA %>%
   mutate(`Type de public` = fct_reorder(`Type de public`,`Nombre de personnes`, sum, .desc = TRUE, na.rm = FALSE)) %>% 
   ggplot(aes(x = `Type de public`, y = `Nombre de personnes`)) +
   # geom_col(aes(col = `Type de public`, fill = `Type de public`)) +
@@ -207,7 +237,7 @@ nb_spectateurs_par_public  <- data_work %>%
 
 
 nb_spectateurs_par_public
-nb_spectateurs_par_public %>% ggsave(plot = ., filename = "hist_type_de_public.jpg", path = "R/figures" , units = "cm", width = 29, height = 29, dpi = "retina")
+nb_spectateurs_par_public %>% ggsave(plot = ., filename = "hist_type_de_public.jpg", path = "Rapports/figures" , units = "cm", width = 29, height = 29, dpi = "retina")
 ```
 
 Les conférences sont principalement faites à des étudiant.e.s ou au grand public.
@@ -217,7 +247,7 @@ Les conférences sont principalement faites à des étudiant.e.s ou au grand pub
 ```{r}
 
 # Rassembler des types de lieux qui se ressemblent (ex: Bar asso = Bar, Asso = Association)
-data_work_lieu <- data_work %>%
+data_work_lieu <- data_work_RA %>%
   rowwise %>% 
   mutate(`Type de lieu` = case_when(str_detect(`Type de lieu`, "Bar") ~ "Bar",
                                     str_detect(`Type de lieu`, "Asso") ~ "Association",
@@ -243,47 +273,47 @@ nb_spectateurs_par_lieu  <- data_work_lieu %>%
 
 
 nb_spectateurs_par_lieu
-nb_spectateurs_par_lieu %>% ggsave(plot = ., filename = "hist_type_de_lieu.jpg", path = "R/figures" , units = "cm", width = 29, height = 29, dpi = "retina")
+nb_spectateurs_par_lieu %>% ggsave(plot = ., filename = "hist_type_de_lieu.jpg", path = "Rapports/figures" , units = "cm", width = 29, height = 29, dpi = "retina")
 ```
 
 Enfin, quand on observe la répartition du nombre de personnes touchées par type de lieu, on retrouve le fort nombre d'étudiant.e.s sensibilisé.e.s dans les universités ou grandes écoles. On note également le fort nombre de personnes sensibilisées par visio, avec comme unique année 2020, année de la pandémie de Covid19.
 
-## Nombre de personnes par conférence
+<!-- ## Nombre de personnes par conférence -->
 
-Regardons la répartition du nombre de spectateurs grâce à un diagramme dit "boîte à moustaches":
+<!-- Regardons la répartition du nombre de spectateurs grâce à un diagramme dit "boîte à moustaches": -->
 
 ```{r}
-
-data_work %>% 
-  ggplot(aes(x = 0, y = `Nombre de personnes`))+
-  geom_boxplot(aes(x = 0), outlier.shape = NA)+
-  geom_jitter(alpha = 0.4, width = 0.04, aes(color = factor(Annee)))+
-  scale_y_continuous(breaks = ceil_10(seq(0, ceil_10(max(data_work$`Nombre de personnes`)), length.out = 16) )) +
-  theme(axis.text.x = element_blank(),
-        axis.ticks.x = element_blank())+
-  guides(color = guide_legend(title = "Annee"))
+# 
+# data_work_RA %>% 
+#   ggplot(aes(x = 0, y = `Nombre de personnes`))+
+#   geom_boxplot(aes(x = 0), outlier.shape = NA)+
+#   geom_jitter(alpha = 0.4, width = 0.04, aes(color = factor(Annee)))+
+#   scale_y_continuous(breaks = ceil_10(seq(0, ceil_10(max(data_work$`Nombre de personnes`)), length.out = 16) )) +
+#   theme(axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank())+
+#   guides(color = guide_legend(title = "Annee"))
 
 ```
 
-Globalement, les conférences réunissent aux alentours de 20-30 personnes. Cependant, de nombreuses coférences en réunissent plus.
+<!-- Globalement, les conférences réunissent aux alentours de 20-30 personnes. Cependant, de nombreuses coférences en réunissent plus. -->
 
 
-On peut regarder le même graphique fait pour chaque année:
+<!-- On peut regarder le même graphique fait pour chaque année: -->
 
 ```{r}
 
-data_work %>% 
-  ggplot(aes(factor(Annee), y = `Nombre de personnes`))+
-  geom_boxplot( outlier.shape = NA)+
-  geom_jitter(alpha = 0.2, width = 0.04, aes(color = factor(Academy)))+
-  scale_y_continuous(breaks = ceil_10(seq(0, max(data_work$`Nombre de personnes`), length.out = 8) )) +
-  labs(x = "Annee")+
-  # theme(axis.text.x = element_blank(),
-  #       axis.ticks.x = element_blank())+
-  guides(color = guide_legend(title = "Academy"))
+# data_work %>% 
+#   ggplot(aes(factor(Annee), y = `Nombre de personnes`))+
+#   geom_boxplot( outlier.shape = NA)+
+#   geom_jitter(alpha = 0.2, width = 0.04, aes(color = factor(Academy)))+
+#   scale_y_continuous(breaks = ceil_10(seq(0, max(data_work$`Nombre de personnes`), length.out = 8) )) +
+#   labs(x = "Annee")+
+#   # theme(axis.text.x = element_blank(),
+#   #       axis.ticks.x = element_blank())+
+#   guides(color = guide_legend(title = "Academy"))
 ```
 
-On note une légère augmentation du nombre médian de personnes par conférence au cours des années.
+<!-- On note une légère augmentation du nombre médian de personnes par conférence au cours des années. -->
 
 
 <!-- ## Analyse de données -->
