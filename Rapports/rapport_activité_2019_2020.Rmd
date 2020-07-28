@@ -29,7 +29,9 @@ data_work <- read_rds("data/data_work.rds")
 
 ```{r}
 
-data_work_RA <- data_work %>% filter(between(Date, ymd("2019-08-01"), ymd("2020-06-30")))
+data_work_RA <- data_work %>%
+  # filter(stringr::str_detect(Academy, "4"))
+  filter(between(Date, ymd("2019-08-01"), ymd("2020-06-30")))
 ```
 
 ```{r}
@@ -184,6 +186,7 @@ data_plot_villes <- data_map %>%
       group_by(Ville, long, lat) %>%
       summarise(nb_spectateurs =  sum(`Nombre de personnes`)) %>%
   ungroup()
+
 plot_sampling <- ggplot() +
   geom_path(
     aes(long, lat, group=group),
@@ -209,6 +212,33 @@ plot_sampling <- ggplot() +
 # plot_sampling
 
 plot_sampling %>% ggsave(plot = ., filename = "map_conferences.jpg", path = "Rapports/figures" , units = "cm", width = 29, height = 29, dpi = "retina")
+
+
+
+plot_sampling_small <- ggplot() +
+  geom_path(
+    aes(long, lat, group=group),
+    data=data_shape, color="lightgray"
+  ) +
+  geom_point(
+    aes(long, lat, size = nb_spectateurs),
+    data=data_plot_villes
+  )+ 
+  guides(size = guide_legend(title="Nombre de\nspectateurs")) +
+  theme(legend.text=element_text(size=1),
+        legend.title = element_text(size = 1),
+        title = element_text(size = 1)) +
+  coord_quickmap() +
+  labs(y="Lattitude (°)", x="Longitude (°)") + 
+  ggtitle("Répartition des spectateurs \ntouchés aux différentes TBC") + 
+  theme_minimal() + 
+  scale_size_continuous(range = c(1,3),breaks = ceil_10(seq(min(data_plot_villes$nb_spectateurs, na.rm = T) %>% ceil_10, max(data_plot_villes$nb_spectateurs, na.rm = T), length.out = 5 ) ) ) + 
+  scale_x_continuous(breaks = NULL) + 
+  scale_y_continuous(breaks = NULL) +
+  labs(x = "", y = "")
+
+plot_sampling_small %>% ggsave(plot = ., filename = "map_conferences_small.jpg", path = "Rapports/figures" , units = "cm", width = 10, height = 10, dpi = "retina")
+
 ```
 
 On retrouve un grand nombre de personnes sensibilisées à Paris, ainsi que dans le Finistère. Certains départements de France pourraient être un peu plus sensibilisées : en effet, plusieurs départements à forte densité n'ont pour autant pas eu de conférence d’Avenir Climatique, comme le Nord-Pas-de-Calais, la Loire-Atlantique, ou la Seine-et-Marne. A l'inverse, les départements de la fameuse “diagonale du vide” sont assez bien lotis en conférences : Landes, Dordogne, Cantal, Puy de Dôme...
